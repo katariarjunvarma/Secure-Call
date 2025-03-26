@@ -54,8 +54,8 @@ class RegisterForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user is not None:
             raise ValidationError('Email already registered.')
+# System Call Log Form
 
-# System Call Form
 class SystemCallForm(FlaskForm):
     command = StringField(
         'Command', 
