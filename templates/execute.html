@@ -1,0 +1,142 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>Execute System Command</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('system_calls.execute') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="command" class="form-label">{{ form.command.label }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-code"></i></span>
+                            {{ form.command(class="form-control", id="command", placeholder="Enter a system command") }}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-play me-1"></i>Execute
+                            </button>
+                        </div>
+                        {% for error in form.command.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                        <small class="form-text text-muted">Enter a system command to execute. Only authorized commands will be permitted.</small>
+                    </div>
+                </form>
+                
+                {% if result %}
+                <div class="mt-4">
+                    <h5>Command Result:</h5>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center {% if result.status == 'Success' %}bg-success{% elif result.status == 'Error' %}bg-danger{% else %}bg-warning{% endif %} text-white">
+                            <span>Status: {{ result.status }}</span>
+                            <span>Exit Code: {{ result.exit_code }}</span>
+                            <span>Time: {{ result.execution_time|round(2) }}s</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text mb-2">Command: <code>{{ form.command.data }}</code></p>
+                            <div class="bg-dark text-light p-3 rounded overflow-auto" style="max-height: 400px;">
+                                <pre class="mb-0">{{ result.output }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Your Command Permissions</h5>
+            </div>
+            <div class="card-body">
+                {% if permissions %}
+                <div class="list-group">
+                    {% for permission in permissions %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1"><code>{{ permission.command_pattern }}</code></h6>
+                        </div>
+                        {% if permission.description %}
+                        <small>{{ permission.description }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>You don't have any command permissions assigned.
+                    {% if current_user.is_admin %}
+                    <p class="mb-0 mt-2">As an administrator, you have unrestricted access to all commands.</p>
+                    {% else %}
+                    <p class="mb-0 mt-2">Please contact an administrator to request access.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card shadow mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Quick Command Reference</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <button type="button" class="list-group-item list-group-item-action command-example" data-command="ls -la">
+                        <code>ls -la</code>
+                        <small class="d-block text-muted">List all files with details</small>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action command-example" data-command="ps aux">
+                        <code>ps aux</code>
+                        <small class="d-block text-muted">List all running processes</small>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action command-example" data-command="free -m">
+                        <code>free -m</code>
+                        <small class="d-block text-muted">Show memory usage</small>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action command-example" data-command="df -h">
+                        <code>df -h</code>
+                        <small class="d-block text-muted">Show disk space usage</small>
+                    </button>
+                    <button type="button" class="list-group-item list-group-item-action command-example" data-command="uptime">
+                        <code>uptime</code>
+                        <small class="d-block text-muted">Show system uptime</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Notice -->
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-shield-alt me-2"></i>Security Notice</h5>
+            <p>
+                All command executions are logged and monitored. Unauthorized command attempts will be denied and reported.
+                Use this interface responsibly and only for authorized purposes.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Quick command reference buttons
+    document.querySelectorAll('.command-example').forEach(button => {
+        button.addEventListener('click', function() {
+            const command = this.getAttribute('data-command');
+            document.getElementById('command').value = command;
+        });
+    });
+});
+</script>
+{% endblock %}

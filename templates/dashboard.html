@@ -1,0 +1,261 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>System Dashboard</h5>
+            </div>
+            <div class="card-body">
+                <h5>Welcome, {{ current_user.username }}!</h5>
+                <p>
+                    This dashboard provides an overview of your system call activities and permissions.
+                    {% if current_user.is_admin %}
+                    As an administrator, you have full access to all system commands and user management.
+                    {% else %}
+                    Your access is restricted to commands authorized by administrators.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-success shadow h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-white">Successful Commands</h6>
+                        <h2 class="mb-0">{{ success_count }}</h2>
+                    </div>
+                    <i class="fas fa-check-circle fa-3x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-danger shadow h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-white">Failed Commands</h6>
+                        <h2 class="mb-0">{{ error_count }}</h2>
+                    </div>
+                    <i class="fas fa-times-circle fa-3x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-warning shadow h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-white">Denied Commands</h6>
+                        <h2 class="mb-0">{{ denied_count }}</h2>
+                    </div>
+                    <i class="fas fa-ban fa-3x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if current_user.is_admin %}
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-info shadow h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-white">Total Users</h6>
+                        <h2 class="mb-0">{{ user_count }}</h2>
+                        <small>Including {{ admin_count }} admin(s)</small>
+                    </div>
+                    <i class="fas fa-users fa-3x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-primary shadow h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-white">Last Login</h6>
+                        <h6 class="mb-0">{{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'First login' }}</h6>
+                    </div>
+                    <i class="fas fa-clock fa-3x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Charts and Recent Activity -->
+<div class="row">
+    <!-- Activity Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Command Execution History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="activityChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    <a href="{{ url_for('system_calls.execute') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-terminal me-2"></i>Execute Command
+                    </a>
+                    <a href="{{ url_for('system_calls.logs') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-clipboard-list me-2"></i>View Logs
+                    </a>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('system_calls.permissions') }}" class="btn btn-outline-success">
+                        <i class="fas fa-key me-2"></i>Manage Permissions
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-info">
+                        <i class="fas fa-user me-2"></i>View Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity Table -->
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Command</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                {% if current_user.is_admin %}
+                                <th>User</th>
+                                <th>IP Address</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td>{{ log.executed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td><code>{{ log.command }}</code></td>
+                                <td>
+                                    {% if log.status == 'Success' %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% elif log.status == 'Error' %}
+                                    <span class="badge bg-danger">Error</span>
+                                    {% elif log.status == 'Denied' %}
+                                    <span class="badge bg-warning">Denied</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ log.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.execution_time|round(2) }}s</td>
+                                {% if current_user.is_admin %}
+                                <td>{{ log.user.username }}</td>
+                                <td>{{ log.ip_address }}</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No recent activity to display. Start by executing a command.
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer text-end">
+                <a href="{{ url_for('system_calls.logs') }}" class="btn btn-sm btn-primary">View All Logs</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch chart data from API
+    fetch('{{ url_for("system_calls.logs_data") }}?days=7')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets.map(dataset => ({
+                        label: dataset.label,
+                        data: dataset.data,
+                        backgroundColor: dataset.backgroundColor,
+                        borderColor: dataset.backgroundColor.replace('0.8', '1'),
+                        borderWidth: 1
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Command Execution Statistics (Last 7 Days)'
+                        },
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching chart data:', error);
+            document.getElementById('activityChart').parentNode.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Failed to load chart data
+                </div>
+            `;
+        });
+});
+</script>
+{% endblock %}

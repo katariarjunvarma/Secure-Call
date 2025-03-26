@@ -1,0 +1,348 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>System Call Logs</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-light" id="refreshBtn">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="logSearch" class="form-control" placeholder="Search in logs...">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="statusFilter" class="form-select">
+                                <option value="">All Statuses</option>
+                                <option value="Success">Success</option>
+                                <option value="Error">Error</option>
+                                <option value="Denied">Denied</option>
+                                <option value="Timeout">Timeout</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="timeFilter" class="form-select">
+                                <option value="all">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Logs Table -->
+                {% if logs.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="logsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Time</th>
+                                <th>Command</th>
+                                <th>Status</th>
+                                <th>Exit Code</th>
+                                <th>Duration</th>
+                                {% if current_user.is_admin %}
+                                <th>User</th>
+                                <th>IP Address</th>
+                                {% endif %}
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs.items %}
+                            <tr data-status="{{ log.status }}">
+                                <td>{{ log.id }}</td>
+                                <td>{{ log.executed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td><code>{{ log.command }}</code></td>
+                                <td>
+                                    {% if log.status == 'Success' %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% elif log.status == 'Error' %}
+                                    <span class="badge bg-danger">Error</span>
+                                    {% elif log.status == 'Denied' %}
+                                    <span class="badge bg-warning">Denied</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ log.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.exit_code if log.exit_code != None else 'N/A' }}</td>
+                                <td>{{ log.execution_time|round(2) }}s</td>
+                                {% if current_user.is_admin %}
+                                <td>{{ log.user.username }}</td>
+                                <td>{{ log.ip_address }}</td>
+                                {% endif %}
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info viewOutput" data-bs-toggle="modal" data-bs-target="#outputModal" data-output="{{ log.output|e }}" data-command="{{ log.command|e }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <nav aria-label="Log navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if logs.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('system_calls.logs', page=logs.prev_num) }}">Previous</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Previous</span>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if page_num %}
+                                {% if page_num == logs.page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('system_calls.logs', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if logs.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('system_calls.logs', page=logs.next_num) }}">Next</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next</span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No logs found. Execute some commands to see them here.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Command Output Modal -->
+<div class="modal fade" id="outputModal" tabindex="-1" aria-labelledby="outputModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="outputModalLabel">Command Output</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Command:</label>
+                    <div class="bg-dark p-2 rounded">
+                        <code id="modalCommand"></code>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Output:</label>
+                    <pre id="modalOutput" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Statistics -->
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Log Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="statusChart" height="250"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="timeChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Output modal functionality
+    document.querySelectorAll('.viewOutput').forEach(button => {
+        button.addEventListener('click', function() {
+            const output = this.getAttribute('data-output');
+            const command = this.getAttribute('data-command');
+            document.getElementById('modalOutput').textContent = output;
+            document.getElementById('modalCommand').textContent = command;
+        });
+    });
+    
+    // Search functionality
+    document.getElementById('logSearch').addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+        const table = document.getElementById('logsTable');
+        const rows = table.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchValue) ? '' : 'none';
+        });
+    });
+    
+    // Status filter
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        const filterValue = this.value;
+        const table = document.getElementById('logsTable');
+        const rows = table.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            if (!filterValue || row.getAttribute('data-status') === filterValue) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        window.location.reload();
+    });
+    
+    // Status chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    
+    // Parse status data from the table
+    const statusData = {};
+    document.querySelectorAll('#logsTable tbody tr').forEach(row => {
+        const status = row.getAttribute('data-status');
+        statusData[status] = (statusData[status] || 0) + 1;
+    });
+    
+    // Colors for different statuses
+    const statusColors = {
+        'Success': 'rgba(40, 167, 69, 0.8)',
+        'Error': 'rgba(220, 53, 69, 0.8)',
+        'Denied': 'rgba(255, 193, 7, 0.8)',
+        'Timeout': 'rgba(108, 117, 125, 0.8)'
+    };
+    
+    new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(statusData),
+            datasets: [{
+                data: Object.values(statusData),
+                backgroundColor: Object.keys(statusData).map(status => statusColors[status] || 'rgba(0, 123, 255, 0.8)'),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                title: {
+                    display: true,
+                    text: 'Command Status Distribution'
+                }
+            }
+        }
+    });
+    
+    // Time chart with data from the API
+    fetch('{{ url_for("system_calls.logs_data") }}')
+        .then(response => response.json())
+        .then(data => {
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            
+            new Chart(timeCtx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets.map(dataset => ({
+                        label: dataset.label,
+                        data: dataset.data,
+                        backgroundColor: dataset.backgroundColor,
+                        borderColor: dataset.backgroundColor.replace('0.8', '1'),
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Command Execution Over Time'
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Commands'
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching chart data:', error);
+            document.getElementById('timeChart').parentNode.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Failed to load chart data
+                </div>
+            `;
+        });
+});
+</script>
+{% endblock %}

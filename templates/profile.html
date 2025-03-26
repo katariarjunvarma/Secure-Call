@@ -1,0 +1,217 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-user me-2"></i>User Profile</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-circle mx-auto mb-3">
+                        <span class="avatar-initials">{{ user.username[0]|upper }}</span>
+                    </div>
+                    <h4>{{ user.username }}</h4>
+                    <p class="text-muted">{{ user.email }}</p>
+                    {% if user.is_admin %}
+                    <span class="badge bg-danger">Administrator</span>
+                    {% else %}
+                    <span class="badge bg-primary">User</span>
+                    {% endif %}
+                </div>
+                
+                <hr>
+                
+                <div class="user-info">
+                    <div class="row mb-2">
+                        <div class="col-5 text-muted">Account Created</div>
+                        <div class="col-7">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-5 text-muted">Last Login</div>
+                        <div class="col-7">{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-5 text-muted">Commands Executed</div>
+                        <div class="col-7">{{ total_commands }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Activity Summary</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="commandStats" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Your Permissions</h5>
+            </div>
+            <div class="card-body">
+                {% if permissions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Command Pattern</th>
+                                <th>Description</th>
+                                <th>Added On</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for permission in permissions %}
+                            <tr>
+                                <td><code>{{ permission.command_pattern }}</code></td>
+                                <td>{{ permission.description or 'No description' }}</td>
+                                <td>{{ permission.created_at.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>You don't have any command permissions assigned.
+                    {% if user.is_admin %}
+                    <p class="mb-0 mt-2">As an administrator, you have unrestricted access to all commands.</p>
+                    {% else %}
+                    <p class="mb-0 mt-2">Please contact an administrator to request access.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card shadow mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activity %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Command</th>
+                                <th>Status</th>
+                                <th>Exit Code</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_activity %}
+                            <tr>
+                                <td>{{ log.executed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td><code>{{ log.command }}</code></td>
+                                <td>
+                                    {% if log.status == 'Success' %}
+                                    <span class="badge bg-success">Success</span>
+                                    {% elif log.status == 'Error' %}
+                                    <span class="badge bg-danger">Error</span>
+                                    {% elif log.status == 'Denied' %}
+                                    <span class="badge bg-warning">Denied</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ log.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.exit_code if log.exit_code != None else 'N/A' }}</td>
+                                <td>{{ log.execution_time|round(2) }}s</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No recent activity to display. Start by executing a command.
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer text-end">
+                <a href="{{ url_for('system_calls.logs') }}" class="btn btn-primary btn-sm">View All Logs</a>
+            </div>
+        </div>
+        
+        <div class="card shadow mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-tools me-2"></i>Account Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('system_calls.execute') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-terminal me-2"></i>Execute Command
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('system_calls.logs') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-clipboard-list me-2"></i>View All Logs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <div class="d-grid">
+                            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Command statistics chart
+    const ctx = document.getElementById('commandStats').getContext('2d');
+    const data = {
+        labels: ['Successful', 'Failed', 'Denied'],
+        datasets: [{
+            data: [{{ successful_commands }}, {{ error_commands }}, {{ denied_commands }}],
+            backgroundColor: [
+                'rgba(40, 167, 69, 0.8)',
+                'rgba(220, 53, 69, 0.8)',
+                'rgba(255, 193, 7, 0.8)'
+            ],
+            borderWidth: 1
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                title: {
+                    display: true,
+                    text: 'Command Execution Distribution'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

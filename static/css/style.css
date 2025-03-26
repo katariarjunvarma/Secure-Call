@@ -1,0 +1,136 @@
+/**
+ * Custom styles for the SecureOS System Call Interface
+ */
+
+/* Avatar circle for user profile */
+.avatar-circle {
+    width: 100px;
+    height: 100px;
+    background-color: var(--bs-primary);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.avatar-initials {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+/* Code styling */
+code {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Command output card */
+.command-output {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Footer styling */
+.footer {
+    margin-top: 3rem;
+    padding: 1rem 0;
+}
+
+/* Chart container */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Badge styling */
+.badge {
+    font-weight: 500;
+}
+
+/* Table improvements */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Status colors for log entries */
+.status-success {
+    color: var(--bs-success);
+}
+
+.status-error {
+    color: var(--bs-danger);
+}
+
+.status-denied {
+    color: var(--bs-warning);
+}
+
+.status-timeout {
+    color: var(--bs-secondary);
+}
+
+/* Quick action buttons */
+.btn-action {
+    margin-bottom: 0.5rem;
+}
+
+/* Log filters */
+.log-filters {
+    margin-bottom: 1.5rem;
+}
+
+/* Permission card */
+.permission-card {
+    margin-bottom: 1rem;
+}
+
+/* User info in profile */
+.user-info {
+    font-size: 0.9rem;
+}
+
+/* Command examples */
+.command-example:hover {
+    cursor: pointer;
+}
+
+/* Modal customization */
+.modal-header {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+/* Ensure consistent spacing */
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+/* Custom card header with icon */
+.card-header i {
+    margin-right: 0.5rem;
+}
+
+/* Navbar brand */
+.navbar-brand i {
+    margin-right: 0.5rem;
+}
+
+/* Alert icons */
+.alert i {
+    margin-right: 0.5rem;
+}
+
+/* Make sure long command text wraps properly */
+td code {
+    word-break: break-all;
+    white-space: normal;
+}

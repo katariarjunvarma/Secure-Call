@@ -1,0 +1,182 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Manage Permissions</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Permission Management</strong>
+                    <p class="mb-0">
+                        Assign command permissions to users. Users can only execute commands that match their assigned permission patterns.
+                        Administrators have unrestricted access to all commands.
+                    </p>
+                </div>
+                
+                <!-- Add New Permission -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Permission</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('system_calls.permissions') }}">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="user_id" class="form-label">{{ form.user_id.label }}</label>
+                                    {{ form.user_id(class="form-select", id="user_id") }}
+                                    {% for error in form.user_id.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label for="command_pattern" class="form-label">{{ form.command_pattern.label }}</label>
+                                    {{ form.command_pattern(class="form-control", id="command_pattern", placeholder="e.g., ls * or ps aux") }}
+                                    {% for error in form.command_pattern.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                    <small class="form-text text-muted">Use * as wildcard, e.g. 'ls *' or 'cat /etc/*'</small>
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label for="description" class="form-label">{{ form.description.label }}</label>
+                                    {{ form.description(class="form-control", id="description", placeholder="Optional description") }}
+                                </div>
+                            </div>
+                            
+                            <div class="text-end">
+                                {{ form.submit(class="btn btn-success") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- User Permission List -->
+                <h5 class="mb-3">User Permissions</h5>
+                
+                <div class="accordion" id="usersAccordion">
+                    {% for user in users %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ user.id }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse{{ user.id }}" aria-expanded="false" 
+                                    aria-controls="collapse{{ user.id }}">
+                                <span class="me-2">{{ user.username }}</span>
+                                {% if user.is_admin %}
+                                <span class="badge bg-danger me-2">Admin</span>
+                                {% endif %}
+                                <span class="badge bg-primary">{{ user.permissions|length }} permission(s)</span>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ user.id }}" class="accordion-collapse collapse" 
+                             aria-labelledby="heading{{ user.id }}" data-bs-parent="#usersAccordion">
+                            <div class="accordion-body">
+                                {% if user.is_admin %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    This user has administrator privileges and can execute any command regardless of permissions.
+                                </div>
+                                {% endif %}
+                                
+                                {% if user.permissions %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Command Pattern</th>
+                                                <th>Description</th>
+                                                <th>Created</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for perm in user.permissions %}
+                                            <tr>
+                                                <td><code>{{ perm.command_pattern }}</code></td>
+                                                <td>{{ perm.description or 'No description' }}</td>
+                                                <td>{{ perm.created_at.strftime('%Y-%m-%d') }}</td>
+                                                <td>
+                                                    <form method="POST" action="{{ url_for('system_calls.delete_permission', user_id=user.id, perm_id=perm.id) }}" 
+                                                          onsubmit="return confirm('Are you sure you want to remove this permission?');">
+                                                        <button type="submit" class="btn btn-sm btn-danger">
+                                                            <i class="fas fa-trash"></i> Remove
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>No permissions assigned to this user.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Permission Reference -->
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Command Permission Examples</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Command Pattern</th>
+                                <th>Description</th>
+                                <th>Example Commands Allowed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>ls *</code></td>
+                                <td>List files and directories</td>
+                                <td><code>ls</code>, <code>ls -la</code>, <code>ls /etc</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>cat /etc/*</code></td>
+                                <td>View files in /etc directory</td>
+                                <td><code>cat /etc/hosts</code>, <code>cat /etc/passwd</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>ps *</code></td>
+                                <td>Process status commands</td>
+                                <td><code>ps</code>, <code>ps aux</code>, <code>ps -ef</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>df *</code></td>
+                                <td>Disk space usage</td>
+                                <td><code>df</code>, <code>df -h</code>, <code>df -k</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>free *</code></td>
+                                <td>Memory usage</td>
+                                <td><code>free</code>, <code>free -m</code>, <code>free -h</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
