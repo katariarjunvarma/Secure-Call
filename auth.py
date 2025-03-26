@@ -83,12 +83,15 @@ def profile():
     error_commands = current_user.logs.filter_by(status='Error').count()
     denied_commands = current_user.logs.filter_by(status='Denied').count()
     
-    # Get user's most recent activity
+    # Get user's most recent 
+    # activity easily
     recent_activity = current_user.logs.order_by(
         db.desc('executed_at')
     ).limit(5).all()
     
-    # Get user's permissions
+    
+#Get Users Permissions
+
     permissions = current_user.permissions
     
     return render_template(
